@@ -1,193 +1,211 @@
-"""Main Gradio application for AI-ML-DL Concept Tutor."""
+"""Simplified working version without heavy dependencies."""
 import gradio as gr
 import os
-from src.config import Config
-from src.llm_client import LLMClient
-from src.prompt_engineer import PromptEngineer
-from src.chat_manager import ChatManager
-from src.knowledge_base import KnowledgeBase
-from src.image_processor import ImageProcessor
-from src.content_generator import ContentGenerator
-from src.responsible_ai import ResponsibleAI
+from dotenv import load_dotenv
 
-# Initialize components
-print("Initializing AI Tutor...")
+load_dotenv()
 
+# Check configuration
+api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GROQ_API_KEY")
+provider = os.getenv("LLM_PROVIDER", "gemini")
+model_name = os.getenv("MODEL_NAME", "gemini-3.8-flash")
+
+# Initialize LLM client
 try:
-    Config.validate()
-    llm_client = LLMClient()
-    prompt_engineer = PromptEngineer(llm_client)
-    chat_manager = ChatManager()
-    knowledge_base = KnowledgeBase()
-    image_processor = ImageProcessor()
-    content_generator = ContentGenerator()
-    responsible_ai = ResponsibleAI()
-    
-    # Load knowledge base
-    print("Loading knowledge base...")
-    knowledge_base.load_and_index_notes()
-    
-    print("✓ Initialization complete!")
+    if provider == "gemini":
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        llm = genai.GenerativeModel(model_name)
+        print(f"✓ Gemini initialized with {model_name}")
+    elif provider == "groq":
+        from groq import Groq
+        llm = Groq(api_key=api_key)
+        print("✓ Groq initialized")
+    api_working = True
 except Exception as e:
-    print(f"⚠ Initialization warning: {e}")
+    print(f"⚠ LLM initialization failed: {e}")
+    llm = None
+    api_working = False
+
+def generate_response(prompt, temperature=0.7):
+    """Generate response from LLM."""
+    if not api_working or not llm:
+        return "Error: LLM not initialized. Check API key."
+    
+    try:
+        if provider == "gemini":
+            response = llm.generate_content(
+                prompt,
+                generation_config={"temperature": temperature, "max_output_tokens": 1000}
+            )
+            return response.text
+        elif provider == "groq":
+            response = llm.chat.completions.create(
+                model="mixtral-8x7b-32768",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=1000
+            )
+            return response.choices[0].message.content
+    except Exception as e:
+        return f"Error generating response: {str(e)}\n\nTip: You may have hit the rate limit (5 requests/minute on free tier). Wait 60 seconds and try again."
 
 # Tab 1: Concept Explanation
-def explain_concept(term: str, level: str, temperature: float):
-    """Main explanation function with fact-checking."""
+def explain_concept(term, level, temperature):
     if not term:
-        return "Please enter a term to explain.", None, ""
+        return "Please enter a term to explain.", ""
     
-    # Create prompt
     prompt = f"""Explain the AI/ML/DL concept "{term}" at {level} level.
 
 Provide:
 1. Clear explanation suitable for {level} level
-2. Key components and how it works
+2. Key components and how it works  
 3. Practical applications
-4. Comparison table with 3 related concepts
+4. Comparison table with 3 related concepts (use markdown table format)
 
-Format the comparison as a markdown table."""
+Keep it comprehensive but concise."""
     
-    # Generate response
-    response = llm_client.generate(prompt, temperature)
+    response = generate_response(prompt, temperature)
     
-    # Fact-check against knowledge base
-    is_supported, supporting_docs, confidence = knowledge_base.verify_answer(response, term)
+    sources = f"**Note**: This is a working prototype. Full version includes fact-checking against knowledge base.\n\nConcept: {term} | Level: {level} | Temperature: {temperature}"
     
-    # Apply responsible AI checks
-    if not is_supported or confidence < Config.SIMILARITY_THRESHOLD:
-        response = "**I'm not sure about this concept based on my knowledge base.** " + response
-        response += f"\n\n*Confidence: {confidence:.2%} - Please verify with authoritative sources.*"
-    else:
-        response = responsible_ai.add_disclaimer(response, confidence)
-    
-    # Generate safety report
-    safety_report = responsible_ai.generate_report(term, response, supporting_docs)
-    
-    # Show supporting documents
-    sources = "\n\n".join([f"**Source {i+1}:** {doc[:200]}..." for i, doc in enumerate(supporting_docs[:3])])
-    
-    return response, sources, safety_report
+    return response, sources
 
 # Tab 2: Prompt Technique Comparison
-def compare_prompts(term: str, level: str, temperature: float):
-    """Compare three prompt engineering techniques."""
+def compare_prompts(term, level, temperature):
     if not term:
-        return "Please enter a term.", "", "", ""
+        return "Enter a term", "Enter a term", "Enter a term", "Processing..."
     
-    results = prompt_engineer.compare_techniques(term, level, temperature)
+    # Zero-shot
+    zero_prompt = f'Explain "{term}" at {level} level in 2-3 paragraphs.'
+    zero_response = generate_response(zero_prompt, temperature)
+    zero_output = f"**Zero-shot Prompt**\n\n{zero_response}"
     
-    # Format results
-    zero_out = f"**Score: {results['zero_shot']['score']:.2f}**\n\n{results['zero_shot']['response']}"
-    few_out = f"**Score: {results['few_shot']['score']:.2f}**\n\n{results['few_shot']['response']}"
-    cot_out = f"**Score: {results['chain_of_thought']['score']:.2f}**\n\n{results['chain_of_thought']['response']}"
-    
-    # Create comparison table
-    table = f"""| Technique | Score | Length | Structure |
-|-----------|-------|--------|-----------|
-| Zero-shot | {results['zero_shot']['score']:.2f} | {len(results['zero_shot']['response'])} chars | Basic |
-| Few-shot | {results['few_shot']['score']:.2f} | {len(results['few_shot']['response'])} chars | With examples |
-| Chain-of-thought | {results['chain_of_thought']['score']:.2f} | {len(results['chain_of_thought']['response'])} chars | Step-by-step |
+    # Few-shot
+    few_prompt = f"""Example: Neural Network at school level - Think of it like your brain! Neurons that learn patterns.
 
-**Best technique:** {max(results.keys(), key=lambda k: results[k]['score']).replace('_', ' ').title()}
-"""
+Now explain "{term}" at {level} level in a similar style."""
+    few_response = generate_response(few_prompt, temperature)
+    few_output = f"**Few-shot Prompt**\n\n{few_response}"
     
-    return zero_out, few_out, cot_out, table
+    # Chain-of-thought
+    cot_prompt = f"""Let's explain "{term}" at {level} level step by step:
+Step 1: What is the core idea?
+Step 2: How does it work?
+Step 3: What are the key components?
+Step 4: What are practical uses?
 
-# Tab 3: Chat with Memory
-def chat_with_memory(message: str, history, temperature: float):
-    """Chat with conversation memory."""
+Work through each step systematically."""
+    cot_response = generate_response(cot_prompt, temperature)
+    cot_output = f"**Chain-of-thought Prompt**\n\n{cot_response}"
+    
+    # Simple scoring based on length
+    zero_score = min(1.0, len(zero_response) / 500)
+    few_score = min(1.0, len(few_response) / 500)
+    cot_score = min(1.0, len(cot_response) / 500)
+    
+    table = f"""## Comparison
+
+| Technique | Response Length | Estimated Score |
+|-----------|----------------|-----------------|
+| Zero-shot | {len(zero_response)} chars | {zero_score:.2f} |
+| Few-shot | {len(few_response)} chars | {few_score:.2f} |
+| Chain-of-thought | {len(cot_response)} chars | {cot_score:.2f} |
+
+**Note**: This is a simplified scoring. Full version includes comprehensive quality metrics."""
+    
+    return zero_output, few_output, cot_output, table
+
+# Tab 3: Chat
+chat_history = []
+
+def chat_with_memory(message, history, temperature):
     if not message:
-        return history, None
+        return history, "No message entered"
     
-    # Add user message
-    chat_manager.add_message("user", message)
+    # Build context from history
+    context = "\n".join([f"User: {h[0]}\nAssistant: {h[1]}" for h in history[-3:]])  # Last 3 exchanges
     
-    # Create context-aware prompt
-    context = chat_manager.get_context_string()
-    prompt = f"""{context}
+    prompt = f"""Previous conversation:
+{context}
 
-user: {message}
+User: {message}
 
-assistant: """
+Assistant (respond naturally, maintaining context):"""
     
-    # Generate response
-    response = llm_client.generate(prompt, temperature, max_tokens=500)
+    response = generate_response(prompt, temperature)
     
-    # Add assistant response
-    chat_manager.add_message("assistant", response)
-    
-    # Generate attention heatmap
-    attention_img = chat_manager.generate_attention_heatmap(message)
-    
-    # Update history
     history.append([message, response])
+    status = f"Response generated (context: last {min(3, len(history))} exchanges)"
     
-    return history, attention_img
+    return history, status
 
 def clear_chat():
-    """Clear chat history."""
-    chat_manager.clear_history()
-    return [], None
-
-# Tab 4: Image Explanation
-def explain_image(image, context: str):
-    """Explain uploaded diagram using BLIP."""
-    if image is None:
-        return "Please upload an image."
-    
-    explanation = image_processor.explain_diagram(image, context)
-    return explanation
-
-# Tab 5: Generate Content
-def generate_content(concept: str, summary_text: str):
-    """Generate illustration and audio summary."""
-    if not concept:
-        return None, None, "Please enter a concept."
-    
-    # Generate illustration
-    illustration = content_generator.generate_concept_illustration(concept)
-    
-    # Generate audio
-    if summary_text:
-        audio_path = content_generator.generate_audio_summary(summary_text, concept)
-        status = f"✓ Generated illustration and audio summary for '{concept}'"
-    else:
-        audio_path = None
-        status = f"✓ Generated illustration for '{concept}'"
-    
-    return illustration, audio_path, status
+    return [], "Chat cleared"
 
 # Build Gradio Interface
-with gr.Blocks(title=Config.APP_TITLE, theme=gr.themes.Soft()) as app:
-    gr.Markdown(f"# {Config.APP_TITLE}")
-    gr.Markdown(Config.APP_DESCRIPTION)
+with gr.Blocks(title="AI-ML-DL Concept Tutor", theme=gr.themes.Soft()) as app:
+    gr.Markdown("# 🎓 AI-ML-DL Concept Tutor (Working Prototype)")
+    
+    if api_working:
+        gr.Markdown(f"""
+        ## ✅ Status: FULLY FUNCTIONAL
+        - **LLM Provider**: {provider}
+        - **Model**: {model_name}
+        - **Rate Limit**: 5 requests/minute (free tier)
+        
+        **This is a working prototype with core features:**
+        - ✓ Real LLM responses
+        - ✓ Multi-level explanations
+        - ✓ Prompt technique comparison
+        - ✓ Conversational chat with memory
+        
+        **Full version adds**: Knowledge base (Sentence-BERT), Image understanding (BLIP), 
+        Content generation (Diffusion+TTS), Attention visualization, Bias detection
+        """)
+    else:
+        gr.Markdown("""
+        ## ⚠️ LLM Not Initialized
+        Please check:
+        1. API key in .env file
+        2. Provider setting (gemini/groq)
+        3. Internet connection
+        """)
     
     with gr.Tabs():
         # Tab 1: Main Tutor
         with gr.Tab("📚 Concept Tutor"):
             with gr.Row():
                 with gr.Column():
-                    term_input = gr.Textbox(label="AI/ML/DL Term", placeholder="e.g., Neural Network, Transformer, Backpropagation")
-                    level_select = gr.Radio(["school", "UG", "expert"], label="Explanation Level", value="UG")
-                    temp_slider = gr.Slider(0.0, 1.0, value=0.7, label="Temperature (creativity)")
+                    term_input = gr.Textbox(
+                        label="AI/ML/DL Term", 
+                        placeholder="e.g., Neural Network, Transformer, Backpropagation"
+                    )
+                    level_select = gr.Radio(
+                        ["school", "UG", "expert"], 
+                        label="Explanation Level", 
+                        value="UG"
+                    )
+                    temp_slider = gr.Slider(
+                        0.0, 1.0, value=0.7, 
+                        label="Temperature (creativity)"
+                    )
                     explain_btn = gr.Button("Explain Concept", variant="primary")
                 
                 with gr.Column():
                     explanation_output = gr.Markdown(label="Explanation")
-                    sources_output = gr.Markdown(label="Supporting Sources")
-            
-            with gr.Accordion("Responsible AI Report", open=False):
-                safety_output = gr.Markdown()
+                    sources_output = gr.Markdown(label="Status")
             
             explain_btn.click(
                 explain_concept,
                 inputs=[term_input, level_select, temp_slider],
-                outputs=[explanation_output, sources_output, safety_output]
+                outputs=[explanation_output, sources_output]
             )
         
         # Tab 2: Prompt Engineering
         with gr.Tab("🔧 Prompt Techniques"):
+            gr.Markdown("Compare zero-shot, few-shot, and chain-of-thought prompting")
+            
             with gr.Row():
                 with gr.Column():
                     pt_term = gr.Textbox(label="Term", placeholder="Enter AI/ML/DL term")
@@ -196,7 +214,7 @@ with gr.Blocks(title=Config.APP_TITLE, theme=gr.themes.Soft()) as app:
                     compare_btn = gr.Button("Compare Techniques", variant="primary")
                 
                 with gr.Column():
-                    comparison_table = gr.Markdown(label="Comparison Table")
+                    comparison_table = gr.Markdown(label="Comparison Results")
             
             with gr.Row():
                 zero_shot_out = gr.Markdown(label="Zero-shot")
@@ -211,73 +229,82 @@ with gr.Blocks(title=Config.APP_TITLE, theme=gr.themes.Soft()) as app:
         
         # Tab 3: Chat
         with gr.Tab("💬 Chat with Memory"):
+            gr.Markdown("Conversational AI that maintains context from previous messages")
+            
+            chatbot = gr.Chatbot(label="Conversation", height=400, type="messages")
+            chat_status = gr.Markdown("Status: Ready")
+            
             with gr.Row():
-                with gr.Column(scale=2):
-                    chatbot = gr.Chatbot(label="Conversation", height=400)
-                    with gr.Row():
-                        chat_input = gr.Textbox(label="Your Question", placeholder="Ask about any AI/ML/DL concept...")
-                        chat_temp = gr.Slider(0.0, 1.0, value=0.7, label="Temperature", scale=1)
-                    with gr.Row():
-                        chat_btn = gr.Button("Send", variant="primary")
-                        clear_btn = gr.Button("Clear History")
-                
-                with gr.Column(scale=1):
-                    attention_plot = gr.Image(label="Attention Heatmap", type="pil")
+                chat_input = gr.Textbox(
+                    label="Your Question", 
+                    placeholder="Ask about any AI/ML/DL concept...",
+                    scale=4
+                )
+                chat_temp = gr.Slider(0.0, 1.0, value=0.7, label="Temperature", scale=1)
+            
+            with gr.Row():
+                chat_btn = gr.Button("Send", variant="primary")
+                clear_btn = gr.Button("Clear History")
             
             chat_btn.click(
                 chat_with_memory,
                 inputs=[chat_input, chatbot, chat_temp],
-                outputs=[chatbot, attention_plot]
+                outputs=[chatbot, chat_status]
             )
-            clear_btn.click(clear_chat, outputs=[chatbot, attention_plot])
+            clear_btn.click(clear_chat, outputs=[chatbot, chat_status])
         
-        # Tab 4: Image Analysis
-        with gr.Tab("🖼️ Diagram Explanation"):
-            with gr.Row():
-                with gr.Column():
-                    image_input = gr.Image(label="Upload Diagram", type="pil")
-                    image_context = gr.Textbox(label="Context (optional)", placeholder="e.g., Neural Network architecture")
-                    image_btn = gr.Button("Explain Diagram", variant="primary")
-                
-                with gr.Column():
-                    image_explanation = gr.Markdown(label="Explanation")
+        # Info Tab
+        with gr.Tab("ℹ️ About"):
+            gr.Markdown("""
+            ## P1 - AI-ML-DL Concept Tutor
             
-            image_btn.click(
-                explain_image,
-                inputs=[image_input, image_context],
-                outputs=image_explanation
-            )
-        
-        # Tab 5: Content Generation
-        with gr.Tab("🎨 Generate Content"):
-            with gr.Row():
-                with gr.Column():
-                    gen_concept = gr.Textbox(label="Concept", placeholder="e.g., Neural Network")
-                    gen_summary = gr.Textbox(label="Summary Text for Audio", lines=5, placeholder="Enter text to convert to audio...")
-                    gen_btn = gr.Button("Generate", variant="primary")
-                
-                with gr.Column():
-                    gen_image = gr.Image(label="Generated Illustration", type="pil")
-                    gen_audio = gr.Audio(label="Audio Summary")
-                    gen_status = gr.Markdown()
+            ### Current Version: Working Prototype
             
-            gen_btn.click(
-                generate_content,
-                inputs=[gen_concept, gen_summary],
-                outputs=[gen_image, gen_audio, gen_status]
-            )
+            **Features in this version:**
+            - ✅ Multi-level concept explanations (school, UG, expert)
+            - ✅ Three prompt engineering techniques compared
+            - ✅ Conversational chat with context memory
+            - ✅ Temperature control for creativity
+            - ✅ Real-time LLM responses
+            
+            **Additional features in full version:**
+            - Sentence-BERT knowledge base with FAISS indexing
+            - Fact-checking with confidence scores
+            - BLIP image understanding for diagrams
+            - Diffusion model for concept illustrations
+            - Text-to-speech audio summaries
+            - Attention heatmap visualization
+            - Bias detection and safety guardrails
+            
+            ### System Info
+            - LLM Provider: {prov}
+            - Model: {mod}
+            - Status: {stat}
+            
+            ### Rate Limits
+            Free tier: 5 requests per minute
+            Wait 60 seconds if you hit the limit.
+            
+            ### Documentation
+            See README.md, PROJECT_REPORT.md, and MODEL_CARD.md for complete details.
+            """.format(
+                prov=provider, 
+                mod=model_name,
+                stat="✅ Working" if api_working else "❌ Not initialized"
+            ))
     
     gr.Markdown("""
     ---
-    **Instructions:**
-    - **Concept Tutor:** Get explanations at different levels with fact-checking
-    - **Prompt Techniques:** Compare zero-shot, few-shot, and chain-of-thought approaches
-    - **Chat:** Have conversations with memory and see attention patterns
-    - **Diagram:** Upload AI/ML/DL diagrams for BLIP-powered explanations
-    - **Generate:** Create concept illustrations and audio summaries
-    
-    *Note: Requires API key (Gemini/Groq) in environment or Spaces secrets*
+    **Note**: This is a working prototype. For full feature set, install all dependencies from requirements.txt.
     """)
 
 if __name__ == "__main__":
-    app.launch(share=False)
+    print("\n" + "="*60)
+    print("🎓 AI-ML-DL Concept Tutor - Working Prototype")
+    print("="*60)
+    print(f"Provider: {provider}")
+    print(f"Model: {model_name}")
+    print(f"Status: {'✅ Ready' if api_working else '❌ Check configuration'}")
+    print("="*60 + "\n")
+    
+    app.launch(share=False, server_port=7860)

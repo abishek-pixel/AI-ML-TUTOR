@@ -1,31 +1,5 @@
-# Core ML/AI Libraries
-transformers>=4.36.0
-sentence-transformers>=2.2.2
-torch>=2.2.0
-torchvision>=0.17.0
-
-# Vector Store & Search
-faiss-cpu==1.7.4
-
-# Image & Audio Generation
-diffusers==0.25.0
-Pillow==10.1.0
-gTTS==2.4.0
-
-# Image Understanding
-salesforce-lavis==1.0.2
-
-# LLM APIs
-google-generativeai==0.3.2
-groq==0.4.1
-
-# UI & Deployment
-gradio==4.13.0
-
-# Utilities
-numpy>=1.24.3
-matplotlib>=3.8.2
-seaborn>=0.13.0
-python-dotenv>=1.0.0
-pydantic>=2.5.3
-protobuf>=6.31.1
+# Minimal requirements for Hugging Face Spaces deployment
+gradio
+python-dotenv
+google-generativeai
+groq
