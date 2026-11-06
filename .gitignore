@@ -1,0 +1,38 @@
+# API Keys & Secrets
+.env
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Models & Data
+models/*.bin
+models/*.pt
+models/*.pth
+*.safetensors
+
+# Outputs
+outputs/*.png
+outputs/*.jpg
+outputs/*.mp3
+outputs/*.wav
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gradio
+flagged/

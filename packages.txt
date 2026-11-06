@@ -1,0 +1,6 @@
+# System packages for Hugging Face Spaces (Ubuntu)
+# Required for certain Python packages
+
+# For audio processing
+ffmpeg
+libsndfile1

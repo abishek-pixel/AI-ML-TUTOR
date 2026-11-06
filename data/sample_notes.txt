@@ -1,0 +1,46 @@
+# AI/ML/DL Syllabus Notes
+
+## Neural Networks
+A neural network is a computational model inspired by biological neurons. It consists of layers of interconnected nodes (neurons) that process information through weighted connections. Each neuron applies an activation function to transform inputs. Neural networks learn by adjusting weights through backpropagation and gradient descent.
+
+## Backpropagation
+Backpropagation is the fundamental algorithm for training neural networks. It computes gradients of the loss function with respect to each weight by applying the chain rule of calculus. The algorithm propagates errors backward through the network, updating weights to minimize the loss function.
+
+## Transformer
+The Transformer architecture revolutionized NLP by replacing recurrent connections with self-attention mechanisms. It processes sequences in parallel using multi-head attention, positional encodings, and feed-forward layers. Transformers enable models like BERT and GPT to capture long-range dependencies efficiently.
+
+## Attention Mechanism
+Attention allows models to focus on relevant parts of the input when making predictions. Self-attention computes relationships between all positions in a sequence by calculating query, key, and value matrices. The attention weights determine which parts of the input are most important for each output.
+
+## Convolutional Neural Networks (CNN)
+CNNs are specialized for processing grid-like data such as images. They use convolutional layers with learnable filters to detect features like edges, textures, and patterns. Pooling layers reduce spatial dimensions while preserving important features. CNNs achieve translation invariance through weight sharing.
+
+## Generative Adversarial Networks (GAN)
+GANs consist of two competing networks: a generator that creates fake samples and a discriminator that distinguishes real from fake. Through adversarial training, the generator learns to produce realistic outputs. GANs are used for image synthesis, style transfer, and data augmentation.
+
+## Recurrent Neural Networks (RNN)
+RNNs process sequential data by maintaining hidden states that capture temporal dependencies. Each step takes the current input and previous hidden state to produce output and next state. Long Short-Term Memory (LSTM) and Gated Recurrent Units (GRU) address the vanishing gradient problem in standard RNNs.
+
+## BERT (Bidirectional Encoder Representations from Transformers)
+BERT is a pre-trained language model that learns contextual word representations by predicting masked tokens bidirectionally. It uses the Transformer encoder architecture and is fine-tuned for downstream tasks like classification, NER, and question answering.
+
+## GPT (Generative Pre-trained Transformer)
+GPT is an autoregressive language model that generates text by predicting the next token given previous context. It uses the Transformer decoder with causal masking to prevent attending to future tokens. GPT models are pre-trained on massive text corpora and can perform various tasks through prompting.
+
+## Gradient Descent
+Gradient descent is an optimization algorithm that iteratively updates model parameters to minimize a loss function. It computes the gradient (partial derivatives) and moves in the direction of steepest descent. Variants include stochastic gradient descent (SGD), mini-batch gradient descent, and adaptive methods like Adam.
+
+## Overfitting
+Overfitting occurs when a model learns training data too well, including noise, resulting in poor generalization to new data. Signs include high training accuracy but low validation accuracy. Regularization techniques like dropout, L2 penalty, and early stopping help prevent overfitting.
+
+## Transfer Learning
+Transfer learning leverages knowledge from a pre-trained model on a source task to improve performance on a target task. Common approaches include feature extraction (freezing layers) and fine-tuning (updating all or some layers). This is especially useful when target data is limited.
+
+## Embedding
+Embeddings are dense vector representations of discrete objects like words, sentences, or images. They map high-dimensional sparse data to lower-dimensional continuous space where semantic similarity is preserved. Word2Vec, GloVe, and learned embeddings in neural networks are common examples.
+
+## Activation Functions
+Activation functions introduce non-linearity into neural networks, enabling them to learn complex patterns. Common functions include ReLU (rectified linear unit), sigmoid, tanh, and softmax. ReLU is popular because it mitigates vanishing gradients and is computationally efficient.
+
+## Loss Functions
+Loss functions measure the difference between predicted and actual values, guiding the learning process. Mean squared error (MSE) is used for regression, cross-entropy for classification, and custom losses for specific tasks. The goal is to minimize the loss through optimization.

@@ -1,0 +1,29 @@
+# Minimal working requirements (install these first)
+python-dotenv
+gradio
+google-generativeai
+groq
+
+# Core ML (install separately if needed)
+torch
+sentence-transformers
+transformers
+
+# Vector Store
+faiss-cpu
+
+# Image & Audio
+Pillow
+gTTS
+
+# Visualization
+matplotlib
+seaborn
+numpy
+
+# Fix protobuf conflict
+protobuf>=6.31.1
+
+# Optional heavy models (comment out if issues)
+# diffusers
+# salesforce-lavis
