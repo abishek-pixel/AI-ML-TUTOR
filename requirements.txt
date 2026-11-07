@@ -1,5 +1,5 @@
-# Minimal requirements for Hugging Face Spaces deployment
-gradio
+# Minimal requirements for Render deployment
+gradio>=4.0.0
 python-dotenv
 google-generativeai
 groq
