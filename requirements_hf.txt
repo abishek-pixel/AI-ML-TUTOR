@@ -1,0 +1,5 @@
+# Minimal requirements for Hugging Face Spaces deployment
+gradio
+python-dotenv
+google-generativeai
+groq
