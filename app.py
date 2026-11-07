@@ -231,7 +231,7 @@ with gr.Blocks(title="AI-ML-DL Concept Tutor", theme=gr.themes.Soft()) as app:
         with gr.Tab("💬 Chat with Memory"):
             gr.Markdown("Conversational AI that maintains context from previous messages")
             
-            chatbot = gr.Chatbot(label="Conversation", height=400, type="messages")
+            chatbot = gr.Chatbot(label="Conversation", height=400)
             chat_status = gr.Markdown("Status: Ready")
             
             with gr.Row():
@@ -307,4 +307,4 @@ if __name__ == "__main__":
     print(f"Status: {'✅ Ready' if api_working else '❌ Check configuration'}")
     print("="*60 + "\n")
     
-    app.launch(share=False, server_port=7860)
+    app.launch(server_name="0.0.0.0", server_port=int(os.environ.get("PORT", 7860)))
